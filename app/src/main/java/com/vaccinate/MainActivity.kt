@@ -15,10 +15,10 @@ import com.android.volley.Request
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.vaccinate.databinding.ActivityMainBinding
-import kotlinx.android.synthetic.main.activity_main.*
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var stateIds : ArrayList<String>
     private val districtIds : MutableList<String> = mutableListOf()
     private lateinit var ageGroup : String
     private lateinit var binding: ActivityMainBinding
@@ -26,16 +26,26 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        //setContentView(R.layout.activity_main)
 
-        // Select State
-        stateSpinner()
+        // itemSelectedListener for stateSelector
+        binding.stateSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                val stateId : String = stateIds[position]
+                if (stateId != "0") {
+                    resetDistrictCheckBox(stateId)
+                }
+            }
 
-        // Select Age Group
-        val agGroupAdapter : ArrayAdapter<String> = ArrayAdapter(this, R.layout.support_simple_spinner_dropdown_item, arrayOf<String>("18-44", "45+"))
-        ageGroupSelector.adapter = agGroupAdapter
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
 
-        ageGroupSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        // itemSelectedListener for ageGroupSelector
+        binding.ageGroupSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>?,
                 view: View?,
@@ -48,13 +58,17 @@ class MainActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        setButtonText()
+        // add agGroupAdapter
+        val agGroupAdapter : ArrayAdapter<String> = ArrayAdapter(this, R.layout.support_simple_spinner_dropdown_item, arrayOf<String>("18-44", "45+"))
+        binding.ageGroupSelector.adapter = agGroupAdapter
+
+        // nnClickListener for startStopBtn
         binding.startStopBtn.setOnClickListener {
             startStopService()
         }
     }
 
-    private fun stateSpinner() {
+    private fun resetStateSpinner() {
         val url = "https://cdn-api.co-vin.in/api/v2/admin/location/states"
         val stringRequest = StringRequest(
             Request.Method.GET,
@@ -66,10 +80,9 @@ class MainActivity : AppCompatActivity() {
                     val stateList = responseJSON.getJSONArray("states")
 
                     val stateNames : ArrayList<String> = ArrayList(stateList.length()+1)
-                    val stateIds : ArrayList<String> = ArrayList(stateList.length())
+                    stateIds = ArrayList(stateList.length())
                     stateNames.add("Select State")
                     stateIds.add("0")
-
 
                     for (i in 0 until stateList.length()) {
                         stateNames.add(stateList.getJSONObject(i).getString("state_name"))
@@ -77,24 +90,8 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     val stateAdapter : ArrayAdapter<String> = ArrayAdapter(this, R.layout.support_simple_spinner_dropdown_item, stateNames)
-                    stateSelector.adapter = stateAdapter
-                    stateSelector.visibility = View.VISIBLE
-
-                    stateSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                        override fun onItemSelected(
-                            parent: AdapterView<*>?,
-                            view: View?,
-                            position: Int,
-                            id: Long
-                        ) {
-                            val stateId : String = stateIds[position]
-                            if (stateId != "0") {
-                                districtCheckBox(stateId)
-                            }
-                        }
-
-                        override fun onNothingSelected(parent: AdapterView<*>?) {}
-                    }
+                    binding.stateSelector.adapter = stateAdapter
+                    binding.stateSelector.visibility = View.VISIBLE
                 }
             },
             {}
@@ -102,11 +99,10 @@ class MainActivity : AppCompatActivity() {
         Volley.newRequestQueue(this).add(stringRequest)
     }
 
-    private fun districtCheckBox(stateId : String) {
+    private fun resetDistrictCheckBox(stateId : String) {
         // clear existing checkboxes
-        if (checkBoxHolderLayout.childCount > 0) {
-            Log.d("ccss", "great")
-            checkBoxHolderLayout.removeAllViews()
+        if (binding.checkBoxHolderLayout.childCount > 0) {
+            binding.checkBoxHolderLayout.removeAllViews()
         }
 
         val url = "https://cdn-api.co-vin.in/api/v2/admin/location/districts/$stateId"
@@ -131,7 +127,7 @@ class MainActivity : AppCompatActivity() {
                                 districtIds.remove(districtList.getJSONObject(i).getInt("district_id").toString())
                             }
                         }
-                        checkBoxHolderLayout.addView(checkBox)
+                        binding.checkBoxHolderLayout.addView(checkBox)
                         checkBoxList.add(checkBox)
                     }
                 }
@@ -151,6 +147,10 @@ class MainActivity : AppCompatActivity() {
                 startService(serviceIntent)
                 Toast.makeText(this, "Service Started", Toast.LENGTH_SHORT).show()
                 binding.startStopBtn.text = "Stop"
+
+                // reset
+                binding.checkBoxHolderLayout.removeAllViews()
+                binding.stateSelector.setSelection(0)
                 districtIds.clear()
             }
         } else {
@@ -172,8 +172,12 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
-    override fun onRestart() {
-        super.onRestart()
+    override fun onStart() {
+        super.onStart()
+
+        // Select State
+        resetStateSpinner()
+
         setButtonText()
     }
 
