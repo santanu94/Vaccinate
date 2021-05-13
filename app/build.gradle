@@ -12,8 +12,8 @@ android {
         applicationId "com.vaccinate"
         minSdkVersion 29
         targetSdkVersion 30
-        versionCode 290101
-        versionName "1.1"
+        versionCode 290102
+        versionName "1.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
