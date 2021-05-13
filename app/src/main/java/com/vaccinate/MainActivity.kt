@@ -151,6 +151,7 @@ class MainActivity : AppCompatActivity() {
                 startService(serviceIntent)
                 Toast.makeText(this, "Service Started", Toast.LENGTH_SHORT).show()
                 binding.startStopBtn.text = "Stop"
+                districtIds.clear()
             }
         } else {
             val serviceIntent = Intent(this, PollVac::class.java)
