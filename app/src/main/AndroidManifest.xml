@@ -19,7 +19,7 @@
             android:showOnLockScreen="true" />
 
         <service
-            android:name=".PollVac"
+            android:name=".PollService"
             android:enabled="true"
             android:exported="true" />
 

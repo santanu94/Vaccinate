@@ -13,6 +13,8 @@ import com.vaccinate.Constants.ALERT_CHANNEL_ID
 import com.vaccinate.Constants.ALERT_NOTIFICATION_ID
 import com.vaccinate.Constants.SERVICE_CHANNEL_ID
 import com.vaccinate.Constants.SERVICE_NOTIFICATION_ID
+import com.vaccinate.util.FileReadWrite
+import com.vaccinate.util.VaccineCenterCard
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDateTime
@@ -23,13 +25,18 @@ import kotlin.math.max
 import kotlin.random.Random
 import java.io.File
 
- class PollVac : Service() {
+class PollService : Service() {
     private lateinit var ageGroup : String
     private lateinit var districtList : ArrayList<String>
     private var stopThread = false
+    private var statusFRW : FileReadWrite? = null
+    private var currentCentersFRW : FileReadWrite? = null
+    private val logFile = null
 
     override fun onCreate() {
         super.onCreate()
+        statusFRW = FileReadWrite("${dataDir}/service_history.json")
+        currentCentersFRW = FileReadWrite("${dataDir}/centers.json")
         createNotificationChannel()
     }
 
@@ -39,8 +46,11 @@ import java.io.File
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ageGroup = intent?.getStringExtra("AgeGroup").toString()
-        districtList = intent?.getStringArrayListExtra("DistrictList") as ArrayList<String>
+        districtList = intent?.getStringArrayListExtra("DistrictIDList") as ArrayList<String>
+        val state = intent.getStringExtra("State").toString()
+        val districtNameList = intent.getStringArrayListExtra("DistrictNamesList") as ArrayList<String>
 
+        writeServiceStartToFile(state, districtNameList, ageGroup)
         showNotification()
 
         val runnable = Runnable {
@@ -53,7 +63,7 @@ import java.io.File
 
                 for (i in 0 until districtList.size) {
                     val districtId = districtList[i]
-                    val date = getDate()
+                    val date = getDate(false)
                     val url =
                         "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=$districtId&date=$date"
 
@@ -65,13 +75,13 @@ import java.io.File
                         val response : String = future.get(5, TimeUnit.SECONDS)
                         vaccinationCenterCardList += getVaccinationCenterList(response)
                     } catch ( e: Exception) {
+                        writeServiceStopToFile("Error", null)
                         Log.d("ccss", e.toString())
                     }
                 }
                 if (vaccinationCenterCardList.size > 0) {
-                    File("${dataDir}/centers.json").writeText(JSONArray(vaccinationCenterCardList.toString()).toString())
+                    writeServiceStopToFile("Finished", vaccinationCenterCardList)
                     runAlertNotification()
-                    Log.d("ccss", "done")
                     break
                 }
                 Thread.sleep(max(30000, districtList.size * 10).toLong())
@@ -118,10 +128,40 @@ import java.io.File
         return vaccinationCenterCardList
     }
 
-    private fun getDate(): String {
+    private fun getDate(getTime : Boolean): String {
         val dateTime = LocalDateTime.now()
-        val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        val formatter : DateTimeFormatter = if (getTime) {
+            DateTimeFormatter.ofPattern("mm:HH dd-MM-yyyy")
+        } else {
+            DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        }
         return dateTime.format(formatter)
+    }
+
+    private fun writeServiceStartToFile(state : String, districtNameList : ArrayList<String>, age : String) {
+        val data = JSONObject()
+        data.put("District", districtNameList.joinToString(", "))
+        data.put("State", state)
+        data.put("Age", age)
+        data.put("Status", "Running")
+        data.put("Started At", getDate(true))
+
+        statusFRW!!.append(data.toString())
+    }
+
+    private fun writeServiceStopToFile(status : String, vaccinationCenterCardList : MutableList<VaccineCenterCard>?) {
+        val data = JSONObject()
+
+        data.put("Stopped At", getDate(true))
+        data.put("Status", status)
+        data.put("Centers", vaccinationCenterCardList)
+
+        statusFRW!!.append(data.toString()+"\n")
+        if (vaccinationCenterCardList != null) {
+            currentCentersFRW!!.write(JSONArray(vaccinationCenterCardList.toString()).toString())
+        }
+        statusFRW = null
+        currentCentersFRW = null
     }
 
     private fun createNotificationChannel() {
@@ -171,6 +211,10 @@ import java.io.File
         super.onDestroy()
         Log.d("ccss", "ondestroy")
         stopThread = true
+        if (statusFRW != null) {
+            writeServiceStopToFile("Stopped by User", null)
+        }
+
         stopSelf()
     }
 }

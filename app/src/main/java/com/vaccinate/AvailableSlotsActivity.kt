@@ -11,10 +11,10 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.vaccinate.util.FileReadWrite
+import com.vaccinate.util.VaccineCenterCard
 import kotlinx.android.synthetic.main.activity_available_slots.*
-import kotlinx.android.synthetic.main.activity_main.*
 import org.json.JSONArray
-import java.io.File
 
 class AvailableSlotsActivity : AppCompatActivity() {
     private lateinit var mediaPlayer: MediaPlayer
@@ -23,9 +23,13 @@ class AvailableSlotsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_available_slots)
         turnScreenOnAndKeyguardOff()
 
+        val centersString = if (intent.getStringExtra("centers") != null) {
+            intent.getStringExtra("centers")!!
+        } else {
+            FileReadWrite("${dataDir}/centers.json").read()
+        }
         val vaccinationCenterCardList: MutableList<VaccineCenterCard> = mutableListOf()
-        val file = File("${dataDir}/centers.json")
-        val jsonArrayCenter = JSONArray(file.readText(Charsets.UTF_8))
+        val jsonArrayCenter = JSONArray(centersString)
         for (i in 0 until jsonArrayCenter.length()) {
             val card = VaccineCenterCard(
                 jsonArrayCenter.getJSONObject(i).getString("center"),
@@ -37,18 +41,14 @@ class AvailableSlotsActivity : AppCompatActivity() {
             )
             vaccinationCenterCardList.add(card)
         }
-        file.delete()
-
 
         // Stopping polling service
-        val serviceIntent = Intent(this, PollVac::class.java)
+        val serviceIntent = Intent(this, PollService::class.java)
         stopService(serviceIntent)
 
-        if (vaccinationCenterCardList != null) {
-            val cardViewAdapter = CardViewAdapter(vaccinationCenterCardList, this)
-            recyclerView.layoutManager = LinearLayoutManager(this)
-            recyclerView.adapter = cardViewAdapter
-        }
+        val cardViewAdapter = CardViewAdapter(vaccinationCenterCardList, this)
+        centerRecyclerView.layoutManager = LinearLayoutManager(this)
+        centerRecyclerView.adapter = cardViewAdapter
 
         playAudio()
         vibratePhone()

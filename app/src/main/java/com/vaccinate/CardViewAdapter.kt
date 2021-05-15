@@ -5,9 +5,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import kotlinx.android.synthetic.main.card.view.*
+import com.vaccinate.util.VaccineCenterCard
+import kotlinx.android.synthetic.main.center_card.view.*
 
-class CardViewAdapter(val vaccinationCenterCardList : MutableList<VaccineCenterCard>, val context : Context) : RecyclerView.Adapter<CardViewAdapter.ViewHolder>() {
+class CardViewAdapter(private val vaccinationCenterCardList : MutableList<VaccineCenterCard>, val context : Context) : RecyclerView.Adapter<CardViewAdapter.ViewHolder>() {
     class ViewHolder(itemView : View) : RecyclerView.ViewHolder(itemView) {
         fun bindItems(vaccineCenterCard: VaccineCenterCard) {
             itemView.center.text = vaccineCenterCard.center
@@ -20,7 +21,7 @@ class CardViewAdapter(val vaccinationCenterCardList : MutableList<VaccineCenterC
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val v = LayoutInflater.from(parent.context).inflate(R.layout.card, parent, false)
+        val v = LayoutInflater.from(parent.context).inflate(R.layout.center_card, parent, false)
         return ViewHolder(v)
     }
 

@@ -1,4 +1,4 @@
-package com.vaccinate
+package com.vaccinate.util
 
 import android.os.Parcelable
 import kotlinx.android.parcel.Parcelize
