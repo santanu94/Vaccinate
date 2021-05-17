@@ -21,7 +21,6 @@ import com.android.volley.toolbox.Volley
 import com.vaccinate.PollService
 import com.vaccinate.R
 import com.vaccinate.databinding.FragmentTabMainBinding
-import com.vaccinate.util.FileReadWrite
 import org.json.JSONObject
 
 class TabMain : Fragment() {
@@ -31,12 +30,13 @@ class TabMain : Fragment() {
     private lateinit var selectedStateName : String
     private var selectedDistrictsNameList : MutableList<String> = mutableListOf()
     private var ageGroup : String?= null
+    private var dose : String?= null
     private lateinit var binding: FragmentTabMainBinding
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         // Inflate the layout for this fragment
         binding = FragmentTabMainBinding.inflate(layoutInflater, container, false)
 
@@ -63,6 +63,7 @@ class TabMain : Fragment() {
                 _: Long ->
             run {
                     ageGroup = if (position == 0) "18" else "45"
+                    binding.doseInputLayout.visibility = View.VISIBLE
                 }
          }
 
@@ -74,6 +75,25 @@ class TabMain : Fragment() {
         )
         binding.ageGroupAutoComplete.setAdapter(agGroupAdapter)
 
+        // itemSelectedListener for doseAutoComplete
+        binding.doseAutoComplete.onItemClickListener = AdapterView.OnItemClickListener {
+                _ : AdapterView<*>?,
+                _: View?,
+                position: Int,
+                _: Long ->
+            run {
+                dose = if (position == 0) "available_capacity_dose1" else "available_capacity_dose2"
+            }
+        }
+
+        // add agGroupAdapter
+        val doseAdapter: ArrayAdapter<String> = ArrayAdapter(
+            requireContext(),
+            R.layout.support_simple_spinner_dropdown_item,
+            arrayOf("Dose 1", "Dose 2")
+        )
+        binding.doseAutoComplete.setAdapter(doseAdapter)
+
         // onClickListener for startStopBtn
         binding.startStopBtn.setOnClickListener {
             startStopService()
@@ -82,6 +102,7 @@ class TabMain : Fragment() {
         // disable keyboard input
         binding.stateAutoComplete.inputType = InputType.TYPE_NULL
         binding.ageGroupAutoComplete.inputType = InputType.TYPE_NULL
+        binding.doseAutoComplete.inputType = InputType.TYPE_NULL
         return binding.root
     }
 
@@ -167,6 +188,7 @@ class TabMain : Fragment() {
         if (binding.startStopBtn.text == "Start") {
             if (districtIds.size > 0 && ageGroup != null) {
                 val serviceIntent = Intent(requireContext(), PollService::class.java)
+                serviceIntent.putExtra("Dose", dose)
                 serviceIntent.putExtra("AgeGroup", ageGroup)
                 serviceIntent.putExtra("State", selectedStateName)
                 serviceIntent.putStringArrayListExtra("DistrictIDList", ArrayList(districtIds))
@@ -180,6 +202,7 @@ class TabMain : Fragment() {
                 binding.scrollView.setBackgroundResource(0)
                 binding.stateAutoComplete.clearListSelection()
                 binding.ageGroupInputLayout.visibility = View.INVISIBLE
+                binding.doseInputLayout.visibility = View.INVISIBLE
                 districtIds.clear()
             }
         } else {

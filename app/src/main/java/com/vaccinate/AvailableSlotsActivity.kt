@@ -56,6 +56,9 @@ class AvailableSlotsActivity : AppCompatActivity() {
         muteBtn.setOnClickListener {
             mediaPlayer.stop()
         }
+        closeBtn.setOnClickListener {
+            finish()
+        }
 
     }
 

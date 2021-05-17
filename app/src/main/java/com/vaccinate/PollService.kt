@@ -27,6 +27,7 @@ import java.io.File
 
 class PollService : Service() {
     private lateinit var ageGroup : String
+    private lateinit var dose : String
     private lateinit var districtList : ArrayList<String>
     private var stopThread = false
     private var statusFRW : FileReadWrite? = null
@@ -46,6 +47,7 @@ class PollService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ageGroup = intent?.getStringExtra("AgeGroup").toString()
+        dose = intent?.getStringExtra("Dose").toString()
         districtList = intent?.getStringArrayListExtra("DistrictIDList") as ArrayList<String>
         val state = intent.getStringExtra("State").toString()
         val districtNameList = intent.getStringArrayListExtra("DistrictNamesList") as ArrayList<String>
@@ -54,6 +56,7 @@ class PollService : Service() {
         showNotification()
 
         val runnable = Runnable {
+            var errCount = 0
             while(true)
             {
                 if (stopThread) {
@@ -74,9 +77,13 @@ class PollService : Service() {
                     try {
                         val response : String = future.get(5, TimeUnit.SECONDS)
                         vaccinationCenterCardList += getVaccinationCenterList(response)
+                        errCount = 0
                     } catch ( e: Exception) {
-                        writeServiceStopToFile("Error", null)
-                        Log.d("ccss", e.toString())
+                        if (errCount == 5) {
+                            writeServiceStopToFile("Error", null)
+                        } else {
+                            errCount ++
+                        }
                     }
                 }
                 if (vaccinationCenterCardList.size > 0) {
@@ -108,7 +115,7 @@ class PollService : Service() {
                         val session = sessionsList.getJSONObject(j)
 
                         if (session.getString("min_age_limit") == ageGroup && session.getInt(
-                                "available_capacity"
+                                dose
                             ) > 0
                         ) {
                             val card = VaccineCenterCard(
@@ -117,7 +124,7 @@ class PollService : Service() {
                                 center.getString("district_name"),
                                 center.getString("pincode"),
                                 session.getString("date"),
-                                session.getString("available_capacity")
+                                session.getString(dose)
                             )
                             vaccinationCenterCardList.add(card)
                         }
@@ -142,6 +149,7 @@ class PollService : Service() {
         val data = JSONObject()
         data.put("District", districtNameList.joinToString(", "))
         data.put("State", state)
+        data.put("Dose", dose.substring(19).capitalize())
         data.put("Age", age)
         data.put("Status", "Running")
         data.put("Started At", getDate(true))
